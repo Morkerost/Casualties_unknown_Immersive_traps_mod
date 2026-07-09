@@ -91,3 +91,4 @@ C:\Users\krira\Documents\GitHub\Cacasualties_unknown_Immersive_traps_mod\obj\Rel
 C:\Users\krira\Documents\GitHub\Cacasualties_unknown_Immersive_traps_mod\obj\Release\net472\CUImmers.DCF1EF24.Up2Date
 C:\Users\krira\Documents\GitHub\Cacasualties_unknown_Immersive_traps_mod\obj\Release\net472\ImmersiveTraps.dll
 C:\Users\krira\Documents\GitHub\Cacasualties_unknown_Immersive_traps_mod\obj\Release\net472\ImmersiveTraps.pdb
+C:\Users\krira\Documents\GitHub\Cacasualties_unknown_Immersive_traps_mod\obj\Release\net472\CUImmersiveTraps.sourcelink.json

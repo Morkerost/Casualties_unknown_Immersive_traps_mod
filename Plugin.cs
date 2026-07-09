@@ -22,37 +22,12 @@ namespace ImmersiveTraps
         }
     }
 
-    internal static class TrapHelper
-    {
-        public static void BreakOrDismember(Limb limb)
-        {
-            Plugin.Log.LogInfo($"BreakOrDismember: {(limb == null ? "NULL" : limb.name)}");
-            if (limb == null || limb.dismembered)
-                return;
-
-            float armor = Mathf.Max(1f, limb.GetArmorReduction());
-            float chance = 0.5f / armor;
-
-            if (limb.isArm || limb.isLegLimb)
-            {
-                if (Random.value < chance){
-                    Plugin.Log.LogInfo("SPIKE -> DISMEMBER");
-                    limb.Dismember();}
-                else
-                    limb.BreakBone();
-            }
-            else
-            {
-                limb.BreakBone();
-            }
-        }
-    }
 
     [HarmonyPatch(typeof(BearTrap), "OnTriggerEnter2D")]
     internal class BearTrapPatch
     {
         [HarmonyPrefix]
-        static bool Prefix(BearTrap __instance, Collider2D other,
+        static bool Prefix(BearTrap __instance, Collider2D other,   
             ref bool ___activated,
             ref Limb ___caughtLimb,
             ref Vector2 ___origPos)
@@ -128,45 +103,136 @@ namespace ImmersiveTraps
         }
     }
 
-    [HarmonyPatch(typeof(SpikeStabberScript), "CheckStab")]
-    internal class SpikePatch
+[HarmonyPatch(typeof(SpikeStabberScript), "CheckStab")]
+internal class SpikePatch
+{
+    [HarmonyPrefix]
+    static bool Prefix(SpikeStabberScript __instance)
     {
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            Plugin.Log.LogInfo("Spike transpiler applied");
-            MethodInfo original = AccessTools.Method(typeof(Limb), nameof(Limb.BreakBone));
-            MethodInfo replacement = AccessTools.Method(typeof(TrapHelper), nameof(TrapHelper.BreakOrDismember));
+        Plugin.Log.LogInfo("Spike CheckStab");
 
-            foreach (var code in instructions)
+        RaycastHit2D[] hits = Physics2D.RaycastAll(
+            __instance.transform.position,
+            __instance.transform.up,
+            6f);
+
+        bool hitSomething = false;
+
+        foreach (RaycastHit2D hit in hits)
+        {
+            if (hit.transform == __instance.transform)
+                continue;
+
+            if (!hit.transform.TryGetComponent(out Limb limb))
+                continue;
+
+            if (Random.Range(0f, 1f) >= 0.5f)
+                continue;
+
+            limb.rb.AddForce(
+                __instance.transform.up * 300f * __instance.damageMult,
+                ForceMode2D.Impulse);
+
+            limb.skinHealth -= Random.Range(50f, 80f) / limb.GetArmorReduction() * __instance.damageMult;
+            limb.muscleHealth -= Random.Range(30f, 50f) / limb.GetArmorReduction() * __instance.damageMult;
+            limb.bleedAmount += Random.Range(0f, 40f) / limb.GetArmorReduction() * __instance.damageMult;
+            limb.pain += Random.Range(70f, 100f) / limb.GetArmorReduction() * __instance.damageMult;
+
+            limb.body.shock = 70f * __instance.damageMult;
+            limb.body.adrenaline = 100f;
+
+            limb.DamageWearables(__instance.damageMult);
+
+            float armor = limb.GetArmorReduction();
+            if (armor <= 0f)
+                armor = 1f;
+
+            if (Random.value < (0.3f / armor) * __instance.damageMult)
             {
-                if (code.Calls(original))
+                if (limb.isArm || limb.isLegLimb)
                 {
-                    Plugin.Log.LogInfo("Spike: BreakBone replaced");
-                    yield return new CodeInstruction(OpCodes.Call, replacement);
+                    Plugin.Log.LogInfo($"SPIKE DISMEMBER -> {limb.name}");
+                    limb.Dismember();
                 }
                 else
-                    yield return code;
+                {
+                    Plugin.Log.LogInfo($"SPIKE BREAK -> {limb.name}");
+                    limb.BreakBone();
+                }
             }
-        }
-    }
 
-    [HarmonyPatch(typeof(WorldGeneration), "CreateExplosion")]
-    internal class ExplosionPatch
-    {
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            MethodInfo original = AccessTools.Method(typeof(Limb), nameof(Limb.BreakBone));
-            MethodInfo replacement = AccessTools.Method(typeof(TrapHelper), nameof(TrapHelper.BreakOrDismember));
-
-            foreach (var code in instructions)
+            if (limb.isHead)
             {
-                if (code.Calls(original))
-                    yield return new CodeInstruction(OpCodes.Call, replacement);
+                limb.body.consciousness = 0f;
+
+                if (Random.Range(0f, 1f) < 0.5f * __instance.damageMult)
+                {
+                    limb.body.brainHealth -=
+                        Random.Range(5f, 70f) *
+                        __instance.damageMult /
+                        armor;
+
+                    limb.body.Disfigure();
+                }
                 else
-                    yield return code;
+                {
+                    limb.body.RemoveEye();
+                }
+            }
+
+            if (limb.isHead || limb.isVital)
+            {
+                limb.body.internalBleeding +=
+                    Random.Range(16f, 30f) *
+                    __instance.damageMult /
+                    armor;
+            }
+
+            limb.body.Scream();
+
+            hitSomething = true;
+
+            PlayerCamera.main.shaker.Shake(50f);
+        }
+
+        if (hitSomething)
+        {
+            Sound.Play(
+                "loudStab",
+                __instance.transform.position,
+                false,
+                true,
+                null,
+                1f,
+                1f,
+                false,
+                false);
+
+            __instance.spikeRenderer.sprite = __instance.hitSpikeSprite;
+        }
+
+        foreach (Collider2D collider in Physics2D.OverlapCircleAll(
+                     __instance.transform.position,
+                     15f,
+                     LayerMask.GetMask("Body", "Limb")))
+        {
+            if (collider.TryGetComponent(out Body body))
+            {
+                body.eyeScareTime = 4f;
+                body.eyePanicTime = 0.5f;
+            }
+
+            if (collider.TryGetComponent(out Limb limb))
+            {
+                limb.body.eyeScareTime = 4f;
+                limb.body.eyePanicTime = 0.5f;
             }
         }
+
+        return false;
     }
+}
+
 
 
 }
