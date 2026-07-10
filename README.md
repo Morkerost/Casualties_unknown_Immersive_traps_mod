@@ -1,3 +1,5 @@
+Now work only with bear trap and spike trap
+
 Backstory:
 
 One day I decided to play around with a prosthetic mod, and unfortunately, I discovered there weren't many ways to lose a limb in the game. Time to fix that.
