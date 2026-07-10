@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ImmersiveTraps")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b50e3e053efe272644a110e45278ed0928bac306")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e385a226eabe3f6a8e9b4d7b4b84fb47d8fc5cfc")]
 [assembly: System.Reflection.AssemblyProductAttribute("ImmersiveTraps")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ImmersiveTraps")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
