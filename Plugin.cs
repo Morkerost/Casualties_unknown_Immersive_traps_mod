@@ -50,10 +50,12 @@ namespace ImmersiveTraps
             limb.body.shock = 100f;
             limb.pain += 100f;
             limb.body.adrenaline += 80f;
-
+            float armor = limb.GetArmorReduction();
+            if (armor <= 0f)
+                armor = 1f;
             if (limb.isArm || limb.isLegLimb)
             {
-                if (Random.value < 0.5f)
+                if (Random.value < 0.5f / armor)
                 {
                     limb.Dismember();
 
@@ -233,6 +235,48 @@ internal class SpikePatch
     }
 }
 
+internal static class ExplosionHelper
+{
+    public static void BreakOrDismember(Limb limb)
+    {
+        if (limb == null || limb.dismembered)
+            return;
 
+        if (limb.isArm || limb.isLegLimb)
+        {
+            Plugin.Log.LogInfo($"Explosion -> Dismember ({limb.name})");
+            limb.Dismember();
+        }
+        else
+        {
+            Plugin.Log.LogInfo($"Explosion -> BreakBone ({limb.name})");
+            limb.BreakBone();
+        }
+    }
+}
+[HarmonyPatch(typeof(WorldGeneration), "CreateExplosion")]
+internal class ExplosionPatch
+{
+    [HarmonyTranspiler]
+    static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+    {
+        MethodInfo breakBone = AccessTools.Method(typeof(Limb), nameof(Limb.BreakBone));
+        MethodInfo replacement = AccessTools.Method(typeof(ExplosionHelper), nameof(ExplosionHelper.BreakOrDismember));
 
+        Plugin.Log.LogInfo("Explosion transpiler applied");
+
+        foreach (CodeInstruction code in instructions)
+        {
+            if (code.Calls(breakBone))
+            {
+                Plugin.Log.LogInfo("Explosion: BreakBone replaced");
+                yield return new CodeInstruction(OpCodes.Call, replacement);
+            }
+            else
+            {
+                yield return code;
+            }
+        }
+    }
+}
 }
